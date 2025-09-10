@@ -16,7 +16,8 @@ const client = new OpenAI({
 const CONTEXT_PATH = path.join(process.cwd(), 'context', 'context.md');
 const CACHE_PATH = path.join(process.cwd(), 'context', 'context.md.cache.json');
 const EMBEDDING_MODEL = 'openai/text-embedding-3-small';
-const TOP_K = 5;
+const TOP_K = 3;
+const RAG_DISABLED = String(process.env.RAG_DISABLED || '').toLowerCase() === 'true';
 
 let contextChunks = [];
 let chunkEmbeddings = [];
@@ -81,6 +82,10 @@ async function saveCache(payload) {
 }
 
 async function ensureContextEmbeddings() {
+  if (RAG_DISABLED) {
+    console.log('[RAG] Disabled via env var RAG_DISABLED=true');
+    return;
+  }
   if (chunkEmbeddings.length && contextChunks.length) return; // already prepared
   try {
     const raw = await fs.readFile(CONTEXT_PATH, 'utf-8');
@@ -129,6 +134,7 @@ function keywordSet(text) {
 }
 
 async function retrieveContext(query, k = TOP_K) {
+  if (RAG_DISABLED) return [];
   if (!contextChunks.length || !chunkEmbeddings.length) return [];
   try {
     const qEmbResp = await client.embeddings.create({
@@ -161,21 +167,49 @@ async function retrieveContext(query, k = TOP_K) {
   }
 }
 
-function buildRagSystemMessage(topSnippets) {
-  if (!topSnippets.length) return null;
-  const contextBlock = topSnippets.map((s, i) => `[[Snippet ${i + 1} (score=${s.score.toFixed(3)})]]\n${s.text}`).join('\n\n---\n\n');
-  const instruction = [
-    'You are a helpful assistant for One Way Bike Tours. Use ONLY the information in the CONTEXT below to answer. If the answer is not in the context, say you do not know and ask for clarification. Keep answers brief, clear, and aligned with company policies. If the issue remains unresolved, offer a phone call.',
-    '',
-    'CONTEXT:',
-    contextBlock,
-  ].join('\n');
-  return { role: 'system', content: instruction };
+function buildRagContextMessage(topSnippets) {
+  if (!topSnippets?.length) return null;
+  const contextBlock = topSnippets
+    .map((s, i) => `[[Snippet ${i + 1} (score=${s.score.toFixed(3)})]]\n${s.text}`)
+    .join('\n\n---\n\n');
+  const content = ['CONTEXT', contextBlock].join('\n');
+  // Provide retrieved context as an assistant message; instructions live in the single system prompt.
+  return { role: 'assistant', content };
+}
+
+// Insert context message just before the latest user message to keep
+// the user's question as the last message.
+function injectContextBeforeLastUser(messages, ctxMsg) {
+  if (!ctxMsg) return messages;
+  if (!messages.length) return [ctxMsg];
+  const out = messages.slice();
+  // Find last user message index (should be last)
+  let lastUserIdx = -1;
+  for (let i = out.length - 1; i >= 0; i--) {
+    if (out[i].role === 'user') { lastUserIdx = i; break; }
+  }
+  if (lastUserIdx === -1) {
+    // No user message found; place context after system if present
+    if (out.length > 0 && out[0].role === 'system') {
+      return [out[0], ctxMsg, ...out.slice(1)];
+    }
+    return [ctxMsg, ...out];
+  }
+  // Insert context immediately before the last user message
+  return [...out.slice(0, lastUserIdx), ctxMsg, ...out.slice(lastUserIdx)];
 }
 
 async function main() {
   const messages = [
-    { role: "system", content: "You are the CEO of a company, responsible for answering clients' questions about the products or services your company provides." }
+    {
+      role: "system",
+      content: [
+        // Persona y política RAG en un solo system prompt
+        "Eres un asistente de One Way Bike Tours que responde consultas de clientes sobre nuestros tours y servicios.",
+        "Usa SOLO la información presente en mensajes marcados como CONTEXT. Si la respuesta no está en el contexto, di que no lo sabes y pide aclaración.",
+        "Sé breve, claro y consistente con las políticas de la empresa. Si el tema queda sin resolver, ofrece una llamada telefónica."
+      ].join(' ')
+    }
   ];
 
   // Prepare RAG context (non-blocking message shown once)
@@ -207,10 +241,16 @@ async function main() {
       try {
         // Retrieve RAG snippets for this query
         const topSnippets = await retrieveContext(userInput, TOP_K);
-        const ragSystem = buildRagSystemMessage(topSnippets);
+        if (topSnippets?.length) {
+          const dbg = topSnippets.map((s, i) => `#${i + 1}:${s.score.toFixed(3)}`).join(' ');
+          console.log(`[RAG] Top snippets: ${dbg}`);
+        } else {
+          console.log('[RAG] No snippets retrieved for this query.');
+        }
+        const ragCtxMsg = buildRagContextMessage(topSnippets);
 
-        // Build augmented message list for this turn
-        const augmentedMessages = ragSystem ? [...messages, ragSystem] : [...messages];
+        // Build augmented message list for this turn (context before the latest user input)
+        const augmentedMessages = injectContextBeforeLastUser(messages, ragCtxMsg);
 
         const response = await client.chat.completions.create({
           model: "openai/gpt-4o",   // or another supported model
