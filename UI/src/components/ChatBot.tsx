@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { MessageCircle, X, Send, User, Bot } from 'lucide-react';
+import { MessageCircle, X, Send, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Message {
@@ -26,10 +26,18 @@ const ChatBot = () => {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  
   // Lightweight markdown renderer for bot messages: supports **bold**, lists (- or *), and paragraph spacing
   const renderMarkdown = (text: string) => {
-    const lines = text.split('\n');
+    // Preprocess: normalize spaces and convert inline bullets like ": - item - item" into proper newlines
+    let normalized = text
+      // Replace non-breaking spaces with regular spaces to fix headings like "###\u00A0Title"
+      .replace(/\u00A0/g, ' ')
+      // Break lists after colon or period when followed by space-hyphen
+      .replace(/([:.])\s+-\s+/g, '$1\n- ') 
+      // Also handle multiple inline hyphen items by converting " - " sequences into new lines when there are no existing breaks
+      .replace(/\s-\s(?=\*\*|[A-Za-z0-9])/g, '\n- ');
+
+    const lines = normalized.split('\n');
     const elements: React.ReactNode[] = [];
     let listBuffer: string[] = [];
 
@@ -70,8 +78,42 @@ const ChatBot = () => {
         continue;
       }
 
+      // Markdown ATX headings: #, ##, ###, etc.
+      const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+      if (headingMatch) {
+        flushList();
+        const level = headingMatch[1].length;
+        const content = headingMatch[2].trim();
+        const common = "font-semibold leading-snug mt-2 mb-1";
+        if (level === 1) elements.push(<h1 className={common + " text-lg"} key={`h-${elements.length}`}>{renderInline(content)}</h1>);
+        else if (level === 2) elements.push(<h2 className={common + " text-base"} key={`h-${elements.length}`}>{renderInline(content)}</h2>);
+        else elements.push(<h3 className={common + " text-sm"} key={`h-${elements.length}`}>{renderInline(content)}</h3>);
+        continue;
+      }
+
+      // Lines ending with a colon can be treated as subheadings (e.g., "Touring Bike:")
+      if (/^[^\-\*\d].*:\s*$/.test(line)) {
+        flushList();
+        const content = line.replace(/:\s*$/, '');
+        elements.push(
+          <h4 className="font-semibold leading-snug mt-2 mb-1 text-sm" key={`h4-${elements.length}`}>
+            {renderInline(content)}
+          </h4>
+        );
+        continue;
+      }
+
+      // Unordered list bullet
       if (/^[-*]\s+/.test(line)) {
         listBuffer.push(line.replace(/^[-*]\s+/, ''));
+        continue;
+      }
+
+      // Numbered list like "1. Item"
+      const orderedMatch = line.match(/^(\d+)\.\s+(.*)$/);
+      if (orderedMatch) {
+        // Convert ordered items into unordered visually for simplicity
+        listBuffer.push(orderedMatch[2]);
         continue;
       }
 
@@ -87,9 +129,13 @@ const ChatBot = () => {
     // Flush any remaining list
     if (listBuffer.length) flushList();
 
-    return <div className="prose prose-sm max-w-none prose-p:my-1 prose-li:my-0">{elements}</div>;
+    return (
+      <div className="prose prose-sm max-w-none prose-p:my-1 prose-li:my-0 prose-headings:font-semibold prose-headings:my-1">
+        {elements}
+      </div>
+    );
   };
-  
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -176,7 +222,7 @@ const ChatBot = () => {
               variant="ghost"
               size="sm"
               onClick={() => setIsOpen(false)}
-              className="text-white hover:bg白/20 h-8 w-8 p-0"
+              className="text-white hover:bg-white/20 h-8 w-8 p-0"
             >
               <X className="w-4 h-4" />
             </Button>
