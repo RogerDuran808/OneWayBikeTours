@@ -9,11 +9,11 @@ const Index = () => {
   const bookingUrl = 'https://biketour-ac9bds.manus.space/';
 
   const destinations = [
-    { name: 'Seville', description: 'Historic charm', image: 'https://images.unsplash.com/photo-1549890762-0a3f8933bcf2?q=80&w=1600&auto=format&fit=crop' },
-    { name: 'Berlin', description: 'Urban adventure', image: 'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?q=80&w=1600&auto=format&fit=crop' },
-    { name: 'Oslo', description: 'Nordic beauty', image: 'https://images.unsplash.com/photo-1472396961693-142e6e269027?q=80&w=1600&auto=format&fit=crop' },
-    { name: 'Amsterdam', description: 'Canal views', image: 'https://images.unsplash.com/photo-1468436139062-f60a71c5c892?q=80&w=1600&auto=format&fit=crop' },
-    { name: 'Hamburg', description: 'Maritime culture', image: 'https://images.unsplash.com/photo-1526481280698-8fcc13fd91e6?q=80&w=1600&auto=format&fit=crop' },
+    { name: 'Seville', description: 'Historic charm', image: '/assets/seville.jpg' },
+    { name: 'Berlin', description: 'Urban adventure', image: '/assets/berlin.jpg' },
+    { name: 'Oslo', description: 'Nordic beauty', image: '/assets/oslo.jpg' },
+    { name: 'Amsterdam', description: 'Canal views', image: '/assets/amsterdam.jpg' },
+    { name: 'Hamburg', description: 'Maritime culture', image: '/assets/hamburg.jpg' },
   ];
 
   const features = [
@@ -34,7 +34,9 @@ const Index = () => {
     <div className="min-h-screen bg-white relative">
       {/* Navigation */}
       <nav className="flex items-center justify-between px-6 py-4 bg-white border-b">
-        <div className="h-8 flex items-center font-bold text-green-600 tracking-wide">ONE WAY BIKE TOURS</div>
+        <div className="h-10 flex items-center">
+          <img src="/assets/Logo.svg" alt="ONE WAY BIKE TOURS" className="h-8 w-auto" />
+        </div>
         <div className="hidden md:flex space-x-6">
           <a href="#tours" className="text-gray-700 hover:text-green-600">Tours</a>
           <a href="#bikes" className="text-gray-700 hover:text-green-600">Bikes</a>
@@ -58,7 +60,7 @@ const Index = () => {
         className="relative h-[90vh] flex items-center justify-center text-center text-white"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url('https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1920&auto=format&fit=crop')",
+            "linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url('/assets/hero-bg.jpg')",
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
@@ -103,7 +105,7 @@ const Index = () => {
             </div>
             <div>
               <img
-                src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1600&auto=format&fit=crop"
+                src="/assets/bike-tour-image.jpg"
                 alt="Bike Tour"
                 className="rounded-lg shadow-lg w-full h-96 object-cover"
               />
