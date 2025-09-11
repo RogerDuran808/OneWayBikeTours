@@ -1,3 +1,4 @@
 node_modules
 .env
 context/context.md.cache.json
+UI/node_modules
