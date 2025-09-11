@@ -42,7 +42,8 @@ All colors MUST be HSL.
     --chat-primary-hover: 142 72% 29%; /* approx Tailwind green-700 (#15803d) */
     --chat-secondary: 210 40% 96.1%;
     --chat-muted: 220 13% 91%;
-    --chat-bubble-user: 206 99% 55%;
+    /* User message bubble color set to green */
+    --chat-bubble-user: 142 76% 36%;
     --chat-bubble-bot: 0 0% 100%;
     --chat-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 
@@ -99,7 +100,7 @@ All colors MUST be HSL.
     --chat-primary-hover: 142 72% 29%;
     --chat-secondary: 217.2 32.6% 17.5%;
     --chat-muted: 217.2 32.6% 17.5%;
-    --chat-bubble-user: 206 99% 55%;
+    --chat-bubble-user: 142 76% 36%;
     --chat-bubble-bot: 217.2 32.6% 17.5%;
     --chat-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     --sidebar-background: 240 5.9% 10%;
