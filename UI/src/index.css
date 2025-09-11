@@ -37,9 +37,9 @@ All colors MUST be HSL.
     --input: 214.3 31.8% 91.4%;
     --ring: 206 99% 55%;
 
-    /* Chatbot specific colors */
-    --chat-primary: 206 99% 55%;
-    --chat-primary-hover: 206 99% 48%;
+    /* Chatbot specific colors (green to match website palette) */
+    --chat-primary: 142 76% 36%; /* approx Tailwind green-600 (#16a34a) */
+    --chat-primary-hover: 142 72% 29%; /* approx Tailwind green-700 (#15803d) */
     --chat-secondary: 210 40% 96.1%;
     --chat-muted: 220 13% 91%;
     --chat-bubble-user: 206 99% 55%;
@@ -94,9 +94,9 @@ All colors MUST be HSL.
     --input: 217.2 32.6% 17.5%;
     --ring: 206 99% 55%;
 
-    /* Chatbot specific colors - dark mode */
-    --chat-primary: 206 99% 55%;
-    --chat-primary-hover: 206 99% 48%;
+    /* Chatbot specific colors - dark mode (green to match website palette) */
+    --chat-primary: 142 76% 36%;
+    --chat-primary-hover: 142 72% 29%;
     --chat-secondary: 217.2 32.6% 17.5%;
     --chat-muted: 217.2 32.6% 17.5%;
     --chat-bubble-user: 206 99% 55%;
