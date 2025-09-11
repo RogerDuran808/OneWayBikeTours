@@ -17,7 +17,7 @@ const ChatBot = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hi there! 👋 Welcome to One Way Bike Tours! I'm Sarah, and I'm here to help you discover the perfect cycling adventure. What would you like to know?",
+      text: "Hi there! 👋 Welcome to One Way Bike Tours! I'm Gerrit, and I'm here to help you discover the perfect cycling adventure. What would you like to know?",
       sender: 'bot',
       timestamp: new Date(),
     },
@@ -26,6 +26,70 @@ const ChatBot = () => {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  
+  // Lightweight markdown renderer for bot messages: supports **bold**, lists (- or *), and paragraph spacing
+  const renderMarkdown = (text: string) => {
+    const lines = text.split('\n');
+    const elements: React.ReactNode[] = [];
+    let listBuffer: string[] = [];
+
+    const flushList = () => {
+      if (listBuffer.length) {
+        elements.push(
+          <ul className="list-disc pl-5 my-2 space-y-1" key={`ul-${elements.length}`}>
+            {listBuffer.map((item, idx) => (
+              <li key={`li-${elements.length}-${idx}`}>{renderInline(item)}</li>
+            ))}
+          </ul>
+        );
+        listBuffer = [];
+      }
+    };
+
+    const renderInline = (line: string) => {
+      // Bold: **text**
+      const parts = line.split(/(\*\*[^*]+\*\*)/g);
+      return (
+        <>
+          {parts.map((part, i) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+              return <strong key={i}>{part.slice(2, -2)}</strong>;
+            }
+            return <span key={i}>{part}</span>;
+          })}
+        </>
+      );
+    };
+
+    for (const rawLine of lines) {
+      const line = rawLine.trimEnd();
+      if (line.trim().length === 0) {
+        // Paragraph break
+        flushList();
+        elements.push(<div className="h-2" key={`spacer-${elements.length}`} />);
+        continue;
+      }
+
+      if (/^[-*]\s+/.test(line)) {
+        listBuffer.push(line.replace(/^[-*]\s+/, ''));
+        continue;
+      }
+
+      // Normal paragraph
+      flushList();
+      elements.push(
+        <p className="my-1 leading-relaxed" key={`p-${elements.length}`}>
+          {renderInline(line)}
+        </p>
+      );
+    }
+
+    // Flush any remaining list
+    if (listBuffer.length) flushList();
+
+    return <div className="prose prose-sm max-w-none prose-p:my-1 prose-li:my-0">{elements}</div>;
+  };
+  
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -47,35 +111,44 @@ const ChatBot = () => {
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsTyping(true);
+    try {
+      // Build chat history for backend
+      const history = messages.map(m => ({
+        role: m.sender === 'user' ? 'user' : 'assistant',
+        content: m.text,
+      }));
 
-    // Simulate bot response
-    setTimeout(() => {
+      const resp = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage.text, history }),
+      });
+
+      if (!resp.ok) {
+        throw new Error(`Request failed: ${resp.status}`);
+      }
+
+      const data: { reply?: string } = await resp.json();
+      const replyText = data.reply?.trim() || "I'm having trouble responding right now. Please try again in a moment.";
+
       const botResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: getBotResponse(inputValue),
+        text: replyText,
         sender: 'bot',
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, botResponse]);
-      setIsTyping(false);
-    }, 1000);
-  };
+    } catch (err) {
 
-  const getBotResponse = (userInput: string): string => {
-    const input = userInput.toLowerCase();
-    
-    if (input.includes('tour') || input.includes('bike')) {
-      return "Hey there! 🚴‍♀️ We have some amazing bike tour options. From breathtaking mountain views to peaceful forest paths and stunning lakeside routes - there's something for everyone. What kind of adventure are you dreaming of?";
-    } else if (input.includes('price') || input.includes('cost')) {
-      return "Great question! Our half-day adventures start at $75, full-day experiences at $120, and if you're up for a multi-day journey, those begin at $300. Everything's included - bikes, gear, snacks, the works! 🌟";
-    } else if (input.includes('book') || input.includes('reserve')) {
-      return "Awesome! I'm so excited to help you plan your adventure. Just hit that 'Book Now' button and we'll get you all set up. Or I can walk you through everything right here - whatever works best for you! 🎉";
-    } else if (input.includes('equipment') || input.includes('gear')) {
-      return "Don't worry about gear! We've got top-notch mountain bikes, safety helmets, and all the equipment you'll need. Everything's maintained perfectly and we have options for all experience levels. Just bring your sense of adventure! 😊";
-    } else if (input.includes('hello') || input.includes('hi') || input.includes('hey')) {
-      return "Hello! Welcome to One Way Bike Tours! I'm here to help you discover the perfect cycling adventure. What would you like to know about our tours? 🚵‍♂️";
-    } else {
-      return "Thanks for reaching out! I love chatting about our bike tours and helping people find their perfect adventure. Whether it's about routes, gear, booking, or just dreaming about your next ride - I'm here for you! What's on your mind? 🌲";
+      const botResponse: Message = {
+        id: (Date.now() + 1).toString(),
+                text: 'Sorry, there was a connection error. Please try again.',
+        sender: 'bot',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, botResponse]);
+    } finally {
+      setIsTyping(false);
     }
   };
 
@@ -103,7 +176,7 @@ const ChatBot = () => {
               variant="ghost"
               size="sm"
               onClick={() => setIsOpen(false)}
-              className="text-white hover:bg-white/20 h-8 w-8 p-0"
+              className="text-white hover:bg白/20 h-8 w-8 p-0"
             >
               <X className="w-4 h-4" />
             </Button>
@@ -121,7 +194,7 @@ const ChatBot = () => {
               >
                 {message.sender === 'bot' && (
                   <div className="w-8 h-8 rounded-full bg-chat-primary flex items-center justify-center flex-shrink-0 text-white font-semibold text-sm">
-                    S
+                    G
                   </div>
                 )}
                 <div
@@ -132,7 +205,11 @@ const ChatBot = () => {
                       : "bg-chat-bubble-bot border border-border"
                   )}
                 >
-                  {message.text}
+                  {message.sender === 'bot' ? (
+                    renderMarkdown(message.text)
+                  ) : (
+                    <div className="whitespace-pre-wrap leading-relaxed">{message.text}</div>
+                  )}
                 </div>
                 {message.sender === 'user' && (
                   <div className="w-8 h-8 rounded-full bg-chat-muted flex items-center justify-center flex-shrink-0">
@@ -145,7 +222,7 @@ const ChatBot = () => {
             {isTyping && (
               <div className="flex gap-2 justify-start">
                 <div className="w-8 h-8 rounded-full bg-chat-primary flex items-center justify-center flex-shrink-0 text-white font-semibold text-sm">
-                  S
+                  G
                 </div>
                 <div className="bg-chat-bubble-bot border border-border p-3 rounded-2xl">
                   <div className="flex gap-1">
